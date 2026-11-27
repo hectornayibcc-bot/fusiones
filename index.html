@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overlay fusiones</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--rb:560px;--rs:1.1;--tw:520px;--th:260px;--ts:400px;--ty:6px;--vb:400px;--vs:1.12;--sb:260px;--ss:1.15;--gap:90px}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;font:16px/1.45 Rubik,system-ui,sans-serif;background:transparent;color:#eef1f6}
+body.ov{overflow:hidden}
+body.pn,body.ld{background:#0f1219;overflow:auto}
+
+/* ===== Escenario 1920x1080 ===== */
+#stage{width:1920px;height:1080px;position:absolute;left:0;top:0;overflow:hidden;transform-origin:0 0}
+#stage.verde{background:#00b140}#stage.magenta{background:#ff00ff}
+#stage.prev{background:linear-gradient(#5b7fc0,#2b3f74 55%,#4466c8 55%,#22358c)}
+.box{position:absolute;left:50%;top:50%;width:var(--rb);height:var(--rb);border-radius:52px;background:#fff;overflow:hidden;
+  transform:translate(-50%,-50%);box-shadow:0 22px 60px rgba(0,0,0,.35);
+  transition:top .9s cubic-bezier(.65,0,.25,1),width .9s cubic-bezier(.65,0,.25,1),height .9s cubic-bezier(.65,0,.25,1),border-radius .9s,transform .9s cubic-bezier(.65,0,.25,1),opacity .45s}
+.box canvas{position:absolute;left:50%;top:50%;width:calc(var(--rb)*var(--rs));height:calc(var(--rb)*var(--rs));transform:translate(-50%,-50%);image-rendering:pixelated;
+  transition:width .9s cubic-bezier(.65,0,.25,1),height .9s cubic-bezier(.65,0,.25,1),transform .9s}
+.box.top{top:0;width:var(--tw);height:var(--th);border-radius:0 0 44px 44px;transform:translate(-50%,0);box-shadow:0 10px 28px rgba(0,0,0,.28)}
+.box.top canvas{width:var(--ts);height:var(--ts);transform:translate(-50%,calc(-50% + var(--ty)))}
+.box.rev{width:var(--vb);height:var(--vb);border-radius:44px}
+.box.rev canvas{width:calc(var(--vb)*var(--vs));height:calc(var(--vb)*var(--vs))}
+.box.off{opacity:0;transform:translate(-50%,-50%) scale(.6)}
+.box.tick canvas{animation:tick .14s ease-out}
+.box.land canvas{animation:land .6s cubic-bezier(.2,1.6,.4,1)}
+@keyframes tick{0%{transform:translate(-50%,-46%) scale(.94)}100%{transform:translate(-50%,-50%) scale(1)}}
+@keyframes land{0%{transform:translate(-50%,-50%) scale(.7)}100%{transform:translate(-50%,-50%) scale(1)}}
+.pill{position:absolute;left:50%;transform:translateX(-50%);background:#fff;color:#1b2030;border-radius:999px;
+  font:800 34px/1 Rubik,sans-serif;padding:14px 32px;box-shadow:0 10px 26px rgba(0,0,0,.28);white-space:nowrap;transition:opacity .4s,transform .5s}
+#roundPill{top:calc(50% - var(--rb)/2 - 72px)}
+#fname{top:calc(50% + var(--vb)/2 + 26px);font-size:44px;padding:16px 40px}
+.pill.off{opacity:0;transform:translateX(-50%) translateY(16px)}
+.side{position:absolute;top:50%;width:var(--sb);height:var(--sb);border-radius:40px;background:#fff;overflow:visible;
+  transform:translate(-50%,-50%) scale(.5);opacity:0;box-shadow:0 18px 46px rgba(0,0,0,.32);transition:opacity .45s,transform .6s cubic-bezier(.2,1.4,.4,1)}
+.side.l{left:calc(50% - var(--vb)/2 - var(--gap) - var(--sb)/2)}.side.r{left:calc(50% + var(--vb)/2 + var(--gap) + var(--sb)/2)}
+.side.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.side.r.on{transition-delay:.25s}
+.side .clip{position:absolute;inset:0;border-radius:40px;overflow:hidden}
+.side canvas{position:absolute;left:50%;top:50%;width:calc(var(--sb)*var(--ss));height:calc(var(--sb)*var(--ss));transform:translate(-50%,-50%);image-rendering:pixelated}
+.side .tag{position:absolute;left:50%;top:-58px;transform:translateX(-50%);font:700 26px/1 Rubik;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.6);white-space:nowrap}
+.side .nm{position:absolute;left:50%;top:calc(100% + 18px);transform:translateX(-50%);background:#fff;color:#1b2030;border-radius:999px;
+  font:800 30px/1 Rubik;padding:12px 28px;box-shadow:0 8px 22px rgba(0,0,0,.28);white-space:nowrap}
+.plus{position:absolute;top:50%;font:800 64px/1 Rubik;color:#fff;text-shadow:0 3px 12px rgba(0,0,0,.5);transform:translate(-50%,-50%);opacity:0;transition:opacity .5s .4s}
+.plus.l{left:calc(50% - var(--vb)/2 - var(--gap)/2)}.plus.r{left:calc(50% + var(--vb)/2 + var(--gap)/2)}
+.plus.on{opacity:1}
+@media(prefers-reduced-motion:reduce){.box,.box canvas,.side,.pill{transition:none}.box.tick canvas,.box.land canvas{animation:none}}
+
+html,body{background:transparent!important}
+</style>
+</head>
+<body class="ov">
+<div id="stage">
+  <div class="pill off" id="roundPill">Ronda 1</div>
+  <div class="plus l" id="plusL">→</div><div class="plus r" id="plusR">←</div>
+  <div class="side l" id="sideL"><div class="tag">Cabeza</div><div class="clip"><canvas width="288" height="288"></canvas></div><div class="nm"></div></div>
+  <div class="box off" id="box"><canvas id="boxCv" width="288" height="288"></canvas></div>
+  <div class="side r" id="sideR"><div class="tag">Cuerpo</div><div class="clip"><canvas width="288" height="288"></canvas></div><div class="nm"></div></div>
+  <div class="pill off" id="fname"></div>
+</div>
+
+<script>
+{
+const SALA='pif-25g18jer26';
+const CDN='https://ifd-spaces.sfo2.cdn.digitaloceanspaces.com/custom/';
+const SHEETS='https://raw.githubusercontent.com/infinitefusion/infinitefusion-e18/main/Graphics/Battlers/spritesheets_autogen/';
+const NTFY='https://ntfy.sh/';
+const $=id=>document.getElementById(id);
+const qs=new URLSearchParams(location.search);
+const store={get(){return null},set(){}};
+const monName=()=>'',fusedName=()=>'';
+/* ---------- Sprites ---------- */
+const cache={},sheets={};
+const loadImg=src=>new Promise((ok,ko)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=ko;im.src=src});
+const sheet=h=>sheets[h]||(sheets[h]=loadImg(SHEETS+h+'.png').catch(e=>{delete sheets[h];throw e}));
+function fromSheet(h,b){return sheet(h).then(im=>({im,sx:(b%10)*96,sy:Math.floor(b/10)*96,sw:96,sh:96,auto:true}))}
+function loadFusion(h,b,alt){
+  const k=`f${h}.${b}.${alt}`;if(cache[k])return cache[k];
+  return cache[k]=(async()=>{
+    if(alt!=='auto'){try{const im=await loadImg(`${CDN}${h}.${b}${alt}.png`);return{im,sx:0,sy:0,sw:im.naturalWidth,sh:im.naturalHeight}}catch(e){}}
+    return fromSheet(h,b);
+  })().catch(e=>{delete cache[k];return null});
+}
+function loadBase(id){
+  const k='b'+id;if(cache[k])return cache[k];
+  return cache[k]=(async()=>{
+    try{const im=await loadImg(`${CDN}${id}.png`);return{im,sx:0,sy:0,sw:im.naturalWidth,sh:im.naturalHeight}}catch(e){}
+    return fromSheet(id,id);
+  })().catch(e=>{delete cache[k];return null});
+}
+function draw(cv,spr){const c=cv.getContext('2d');c.imageSmoothingEnabled=false;c.clearRect(0,0,cv.width,cv.height);
+  if(spr)c.drawImage(spr.im,spr.sx,spr.sy,spr.sw,spr.sh,0,0,cv.width,cv.height)}
+const fusionOf=(st,i)=>st&&st.f&&st.f[i];
+function preload(st){(st.f||[]).forEach(f=>{if(f){loadFusion(f[0],f[1],f[2]);loadBase(f[0]);loadBase(f[1])}})}
+
+/* ---------- Tamaños ---------- */
+const LAY_DEF={rb:560,rs:110,tw:520,th:260,ts:400,ty:6,vb:400,vs:112,sb:260,ss:115,gap:90};
+function applyLay(l){l=Object.assign({},LAY_DEF,l||{});const r=document.documentElement.style;
+  for(const k of ['rb','tw','th','ts','ty','vb','sb','gap'])r.setProperty('--'+k,l[k]+'px');
+  for(const k of ['rs','vs','ss'])r.setProperty('--'+k,l[k]/100)}
+
+/* ---------- Overlay: aplicar estado ---------- */
+const box=$('box'),boxCv=$('boxCv'),sideL=$('sideL'),sideR=$('sideR');
+let rollToken=0,lastKey='';
+function setBox(mode){box.classList.remove('top','rev','off');if(mode)box.classList.add(mode)}
+function sides(on){[sideL,sideR,$('plusL'),$('plusR')].forEach(e=>e.classList.toggle('on',on))}
+function pill(el,on,text){if(text!=null)el.textContent=text;el.classList.toggle('off',!on)}
+function bump(cls){box.classList.remove('tick','land');void box.offsetWidth;box.classList.add(cls)}
+async function drawChosen(st){const f=fusionOf(st,st.cur);if(!f)return;draw(boxCv,await loadFusion(f[0],f[1],f[2]))}
+
+async function roulette(st,tok){
+  const list=st.f.map((f,i)=>f?i:-1).filter(i=>i>=0);if(!list.length)return;
+  // orden mezclado con la semilla para que en todas las PCs se vea igual
+  let s=st.seed||1;const rnd=()=>(s=(s*16807)%2147483647)/2147483647;
+  const perm=list.slice();for(let i=perm.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[perm[i],perm[j]]=[perm[j],perm[i]]}
+  const T=Math.max(26,perm.length*2+4),n=perm.length,p0=((perm.indexOf(st.cur)-(T-1))%n+n)%n;
+  for(let t=0;t<T;t++){
+    if(tok!==rollToken)return;
+    const f=st.f[perm[(p0+t)%n]];const spr=await loadFusion(f[0],f[1],f[2]);
+    if(tok!==rollToken)return;
+    draw(boxCv,spr);bump(t===T-1?'land':'tick');
+    if(t<T-1)await new Promise(r=>setTimeout(r,55+360*Math.pow(t/(T-1),3)));
+  }
+}
+async function applyState(st,instant){
+  if(!st||!st.f)return;applyLay(st.lay);preload(st);
+  const key=st.id+'|'+st.phase;const same=key===lastKey;lastKey=key;
+  const f=fusionOf(st,st.cur);
+  if(st.phase==='idle'||!f){rollToken++;setBox('off');sides(false);pill($('roundPill'),false);pill($('fname'),false);return}
+  if(st.phase==='roll'){
+    sides(false);pill($('fname'),false);setBox('');pill($('roundPill'),true,'Ronda '+st.round);
+    if(same)return;
+    const tok=++rollToken;
+    if(instant)drawChosen(st);else roulette(st,tok);
+    return;
+  }
+  rollToken++;await drawChosen(st);
+  pill($('roundPill'),false);
+  if(st.phase==='top'){sides(false);pill($('fname'),false);setBox('top');return}
+  if(st.phase==='reveal'){
+    setBox('rev');
+    const [h,b]=f;
+    const [bh,bb]=await Promise.all([loadBase(h),loadBase(b)]);
+    draw(sideL.querySelector('canvas'),bh);draw(sideR.querySelector('canvas'),bb);
+    const nm=st.n||{h:monName(h),b:monName(b),f:fusedName(h,b)};
+    sideL.querySelector('.nm').textContent=nm.h;sideR.querySelector('.nm').textContent=nm.b;
+    sides(true);pill($('fname'),true,nm.f);
+  }
+}
+
+/* ---------- Escalado del escenario ---------- */
+const stage=$('stage');let fitTo=null;
+function fit(){const W=fitTo?fitTo.clientWidth:innerWidth,H=fitTo?fitTo.clientHeight:innerHeight;
+  const k=Math.min(W/1920,H/1080);stage.style.transform=`translate(${(W-1920*k)/2}px,${(H-1080*k)/2}px) scale(${k})`}
+addEventListener('resize',fit);
+
+/* ---------- Modo overlay ---------- */
+function startOverlay(sala){
+  document.body.className='ov';const bg=(qs.get('fondo')||'').toLowerCase();
+  if(bg==='verde'||bg==='magenta')stage.classList.add(bg);fit();
+  const loadT=Date.now()/1000;let pending=null,timer=null;
+  const es=new EventSource(`${NTFY}${encodeURIComponent(sala)}/sse?since=12h`);
+  es.onmessage=e=>{
+    let m;try{m=JSON.parse(e.data)}catch(x){return}
+    if(m.event&&m.event!=='message')return;
+    let st;try{st=JSON.parse(m.message)}catch(x){return}
+    if(!st||st.app!=='pifevento')return;
+    if(m.time<loadT-3){pending=st;clearTimeout(timer);timer=setTimeout(()=>applyState(pending,true),250)}
+    else{clearTimeout(timer);applyState(st,false)}
+  };
+}
+
+startOverlay(qs.get('sala')||SALA);
+}
+</script>
+</body>
+</html>
