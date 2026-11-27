@@ -26,6 +26,21 @@ body.pn,body.ld{background:#0f1219;overflow:auto}
 .box.top canvas{width:var(--ts);height:var(--ts);transform:translate(-50%,calc(-50% + var(--ty)))}
 .box.rev{width:var(--vb);height:var(--vb);border-radius:44px}
 .box.rev canvas{width:calc(var(--vb)*var(--vs));height:calc(var(--vb)*var(--vs))}
+.reel{position:absolute;inset:0;overflow:hidden}
+.strip{position:absolute;top:50%;left:calc(50% - var(--rb)*.16);display:flex;gap:calc(var(--rb)*.06);transform:translate(0,-50%);will-change:transform}
+.strip.go{transition:transform 4.2s cubic-bezier(.08,.62,.12,1)}
+.ball{width:calc(var(--rb)*.32);height:calc(var(--rb)*.32);flex:none}
+.ball svg{width:100%;height:100%;display:block;filter:drop-shadow(0 6px 8px rgba(0,0,0,.22))}
+.ball.win{animation:shake .5s ease-in-out 2}
+@keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}75%{transform:rotate(14deg)}}
+.mark{position:absolute;left:50%;top:calc(50% - var(--rb)*.16 - 34px);transform:translateX(-50%);width:0;height:0;
+  border-left:16px solid transparent;border-right:16px solid transparent;border-top:22px solid #e3350d}
+.reel::before,.reel::after{content:"";position:absolute;top:0;bottom:0;width:22%;z-index:1;pointer-events:none}
+.reel::before{left:0;background:linear-gradient(90deg,#fff,rgba(255,255,255,0))}
+.reel::after{right:0;background:linear-gradient(270deg,#fff,rgba(255,255,255,0))}
+.bflash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:2}
+.bflash.go{animation:bfl .7s ease-out}
+@keyframes bfl{0%{opacity:1}100%{opacity:0}}
 .box.off{opacity:0;transform:translate(-50%,-50%) scale(.6)}
 .box.tick canvas{animation:tick .14s ease-out}
 .box.land canvas{animation:land .6s cubic-bezier(.2,1.6,.4,1)}
@@ -59,7 +74,7 @@ html,body{background:transparent!important}
   <div class="pill off" id="roundPill">Ronda 1</div>
   <div class="plus l" id="plusL">→</div><div class="plus r" id="plusR">←</div>
   <div class="side l" id="sideL"><div class="tag">Cabeza</div><div class="clip"><canvas width="288" height="288"></canvas></div><div class="nm"></div></div>
-  <div class="box off" id="box"><canvas id="boxCv" width="288" height="288"></canvas></div>
+  <div class="box off" id="box"><canvas id="boxCv" width="288" height="288"></canvas><div class="reel" id="reel" hidden><div class="strip" id="strip"></div><div class="mark"></div></div><div class="bflash" id="bflash"></div></div>
   <div class="side r" id="sideR"><div class="tag">Cuerpo</div><div class="clip"><canvas width="288" height="288"></canvas></div><div class="nm"></div></div>
   <div class="pill off" id="fname"></div>
 </div>
@@ -113,33 +128,51 @@ function pill(el,on,text){if(text!=null)el.textContent=text;el.classList.toggle(
 function bump(cls){box.classList.remove('tick','land');void box.offsetWidth;box.classList.add(cls)}
 async function drawChosen(st){const f=fusionOf(st,st.cur);if(!f)return;draw(boxCv,await loadFusion(f[0],f[1],f[2]))}
 
+const BALLS=[['#e3350d','#fff'],['#3b6fd8','#e3350d'],['#2b2b2b','#f5c518'],['#7b3fb5','#e05ab0']];
+function ballSvg(i){const [top,det]=BALLS[i%BALLS.length];
+  return `<div class="ball"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#fff"/>
+  <path d="M4 50a46 46 0 0 1 92 0z" fill="${top}"/>${i%BALLS.length?`<path d="M22 22l12 12M78 22l-12 12" stroke="${det}" stroke-width="8" stroke-linecap="round"/>`:''}
+  <rect x="4" y="46" width="92" height="8" fill="#1b1b1b"/><circle cx="50" cy="50" r="46" fill="none" stroke="#1b1b1b" stroke-width="6"/>
+  <circle cx="50" cy="50" r="14" fill="#fff" stroke="#1b1b1b" stroke-width="7"/><circle cx="50" cy="50" r="5" fill="#e8e8e8"/></svg></div>`}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+function hideReel(){$('reel').hidden=true;boxCv.style.visibility=''}
 async function roulette(st,tok){
-  const list=st.f.map((f,i)=>f?i:-1).filter(i=>i>=0);if(!list.length)return;
-  // orden mezclado con la semilla para que en todas las PCs se vea igual
+  // Pokébolas que giran, frenan, la del centro tiembla y se abre con la fusión
   let s=st.seed||1;const rnd=()=>(s=(s*16807)%2147483647)/2147483647;
-  const perm=list.slice();for(let i=perm.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[perm[i],perm[j]]=[perm[j],perm[i]]}
-  const T=Math.max(26,perm.length*2+4),n=perm.length,p0=((perm.indexOf(st.cur)-(T-1))%n+n)%n;
-  for(let t=0;t<T;t++){
-    if(tok!==rollToken)return;
-    const f=st.f[perm[(p0+t)%n]];const spr=await loadFusion(f[0],f[1],f[2]);
-    if(tok!==rollToken)return;
-    draw(boxCv,spr);bump(t===T-1?'land':'tick');
-    if(t<T-1)await new Promise(r=>setTimeout(r,55+360*Math.pow(t/(T-1),3)));
-  }
+  const COUNT=34,WIN=30;
+  const strip=$('strip');
+  strip.innerHTML=Array.from({length:COUNT},(_,i)=>ballSvg(Math.floor(rnd()*BALLS.length)*(i===WIN?0:1))).join('');
+  strip.classList.remove('go');strip.style.transform='translate(0,-50%)';
+  boxCv.style.visibility='hidden';$('reel').hidden=false;
+  const f=fusionOf(st,st.cur);const sprP=loadFusion(f[0],f[1],f[2]);
+  await wait(450);if(tok!==rollToken)return;
+  const rb=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rb'))||560;
+  const step=rb*.38,jitter=(rnd()-.5)*rb*.08;
+  void strip.offsetWidth;strip.classList.add('go');
+  strip.style.transform=`translate(${-(WIN*step)+jitter}px,-50%)`;
+  await wait(4300);if(tok!==rollToken)return;
+  strip.classList.remove('go');strip.style.transition='transform .35s ease-out';
+  strip.style.transform=`translate(${-(WIN*step)}px,-50%)`;
+  await wait(380);strip.style.transition='';if(tok!==rollToken)return;
+  const win=strip.children[WIN];win.classList.add('win');
+  await wait(1000);if(tok!==rollToken)return;
+  const spr=await sprP;if(tok!==rollToken)return;
+  draw(boxCv,spr);hideReel();
+  const fl=$('bflash');fl.classList.remove('go');void fl.offsetWidth;fl.classList.add('go');bump('land');
 }
 async function applyState(st,instant){
   if(!st||!st.f)return;applyLay(st.lay);preload(st);
   const key=st.id+'|'+st.phase;const same=key===lastKey;lastKey=key;
   const f=fusionOf(st,st.cur);
-  if(st.phase==='idle'||!f){rollToken++;setBox('off');sides(false);pill($('roundPill'),false);pill($('fname'),false);return}
+  if(st.phase==='idle'||!f){rollToken++;hideReel();setBox('off');sides(false);pill($('roundPill'),false);pill($('fname'),false);return}
   if(st.phase==='roll'){
     sides(false);pill($('fname'),false);setBox('');pill($('roundPill'),true,'Ronda '+st.round);
     if(same)return;
     const tok=++rollToken;
-    if(instant)drawChosen(st);else roulette(st,tok);
+    if(instant){hideReel();drawChosen(st)}else roulette(st,tok);
     return;
   }
-  rollToken++;await drawChosen(st);
+  rollToken++;hideReel();await drawChosen(st);
   pill($('roundPill'),false);
   if(st.phase==='top'){sides(false);pill($('fname'),false);setBox('top');return}
   if(st.phase==='reveal'){
